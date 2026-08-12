@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 // ============================================================
 // Zoom Attendance Tracker — popup.js
 // Toda la lógica corre en el browser. Sin servidor externo.
@@ -28,7 +27,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       // 1. Obtener participantes de Zoom desde el DOM de la pestaña activa
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
       const injectionResults = await chrome.scripting.executeScript({
         target: { tabId: tab.id, allFrames: true },
         func: scrapeZoomDataFull,
@@ -45,22 +47,32 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (!zoomData) {
-        const firstError = injectionResults.find(r => r.result && r.result.error);
-        setStatus("warning", firstError
-          ? firstError.result.error
-          : "No se detectó la lista. Abrí el panel 'Participantes' en Zoom."
+        const firstError = injectionResults.find(
+          (r) => r.result && r.result.error,
+        );
+        setStatus(
+          "warning",
+          firstError
+            ? firstError.result.error
+            : "No se detectó la lista. Abrí el panel 'Participantes' en Zoom.",
         );
         return;
       }
 
-      setStatus("loading", `${Object.keys(zoomData).length} participantes detectados. Procesando CSV...`);
+      setStatus(
+        "loading",
+        `${Object.keys(zoomData).length} participantes detectados. Procesando CSV...`,
+      );
 
       // 2. Leer y parsear el CSV de la lista de alumnos
       const csvText = await leerArchivo(fileInput.files[0]);
       const alumnos = parsearCSV(csvText);
 
       if (alumnos.length === 0) {
-        setStatus("warning", "El archivo CSV está vacío o no tiene el formato correcto.");
+        setStatus(
+          "warning",
+          "El archivo CSV está vacío o no tiene el formato correcto.",
+        );
         return;
       }
 
@@ -69,8 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // 4. Mostrar tabla de resultados en el popup
       renderTabla(filas);
-      summaryDiv.textContent =
-        `Presentes: ${resumen.presentes} | Ausentes: ${resumen.ausentes} | Total: ${resumen.total}`;
+      summaryDiv.textContent = `Presentes: ${resumen.presentes} | Ausentes: ${resumen.ausentes} | Total: ${resumen.total}`;
       resultSection.style.display = "block";
 
       // 5. Generar CSV en memoria
@@ -78,7 +89,6 @@ document.addEventListener("DOMContentLoaded", () => {
       downloadBtn.style.display = "block";
 
       setStatus("success", "¡Listo! Revisá el reporte y descargalo.");
-
     } catch (err) {
       console.error("[ZoomAttendance] Error:", err);
       setStatus("error", "Error inesperado: " + err.message);
@@ -88,7 +98,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // Botón de descarga separado del procesamiento
   downloadBtn.addEventListener("click", () => {
     if (!reporteCSV) return;
-    const blob = new Blob(["\uFEFF" + reporteCSV], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + reporteCSV], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -115,8 +127,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const camOn = camara === "Encendida";
       tr.innerHTML = `
         <td class="nombre">${nombre}</td>
-        <td class="${presente ? 'presente' : 'ausente'}">${presente ? "✓" : "✗"} ${asistencia}</td>
-        <td class="${camOn ? 'cam-on' : 'cam-off'}">${camOn ? "🟢" : "🔴"} ${camara}</td>
+        <td class="${presente ? "presente" : "ausente"}">${presente ? "✓" : "✗"} ${asistencia}</td>
+        <td class="${camOn ? "cam-on" : "cam-off"}">${camOn ? "🟢" : "🔴"} ${camara}</td>
       `;
       resultBody.appendChild(tr);
     });
@@ -146,20 +158,24 @@ async function scrapeZoomDataFull() {
     // Estrategia 1: contenedor por ID
     const container = document.getElementById("participants-ul");
     if (container) {
-      items = container.querySelectorAll(".participants-li, [id^='participants-list-']");
+      items = container.querySelectorAll(
+        ".participants-li, [id^='participants-list-']",
+      );
     }
     // Estrategia 2: todo el documento
     if (!items || items.length === 0) {
-      items = document.querySelectorAll(".participants-li, [id^='participants-list-']");
+      items = document.querySelectorAll(
+        ".participants-li, [id^='participants-list-']",
+      );
     }
     // Estrategia 3: por aria-label del contenedor de lista
     if (!items || items.length === 0) {
       const listContainer = document.querySelector(
-        '[aria-label="Participants list"], [aria-label="Lista de participantes"]'
+        '[aria-label="Participants list"], [aria-label="Lista de participantes"]',
       );
       if (listContainer) {
         items = listContainer.querySelectorAll(
-          ".participants-li, [id^='participants-list-'], [role='application']"
+          ".participants-li, [id^='participants-list-'], [role='application']",
         );
       }
     }
@@ -174,17 +190,22 @@ async function scrapeZoomDataFull() {
       // Fallback: desde aria-label
       const aria = el.getAttribute("aria-label") || "";
       if (!name && aria) {
-        name = aria.split(",")[0].replace(/\s*\([^)]*\)/g, "").trim();
+        name = aria
+          .split(",")[0]
+          .replace(/\s*\([^)]*\)/g, "")
+          .trim();
       }
 
       if (!name) return;
 
       // Estado de cámara
       const ariaLower = aria.toLowerCase();
-      const videoOffSvg  = el.querySelector('svg[class*="video-off"]');
-      const videoOnSvg   = el.querySelector('svg[class*="video-on"]');
-      const videoOffAria = ariaLower.includes("video off") || ariaLower.includes("video apagado");
-      const videoOnAria  = ariaLower.includes("video on")  || ariaLower.includes("video encendido");
+      const videoOffSvg = el.querySelector('svg[class*="video-off"]');
+      const videoOnSvg = el.querySelector('svg[class*="video-on"]');
+      const videoOffAria =
+        ariaLower.includes("video off") || ariaLower.includes("video apagado");
+      const videoOnAria =
+        ariaLower.includes("video on") || ariaLower.includes("video encendido");
 
       let camera_on = true;
       if (videoOffSvg || videoOffAria) camera_on = false;
@@ -213,7 +234,9 @@ async function scrapeZoomDataFull() {
       if (el && el.scrollHeight > el.clientHeight) return el;
     }
     // Búsqueda genérica: ancestro scrolleable del primer item
-    const firstItem = document.querySelector(".participants-li, [id^='participants-list-']");
+    const firstItem = document.querySelector(
+      ".participants-li, [id^='participants-list-']",
+    );
     if (firstItem) {
       let parent = firstItem.parentElement;
       while (parent && parent !== document.body) {
@@ -229,7 +252,8 @@ async function scrapeZoomDataFull() {
 
   if (!foundInitial) {
     return {
-      error: "No se detectó la lista de participantes. Abrí el panel 'Participantes' en Zoom."
+      error:
+        "No se detectó la lista de participantes. Abrí el panel 'Participantes' en Zoom.",
     };
   }
 
@@ -237,26 +261,27 @@ async function scrapeZoomDataFull() {
   const scrollEl = findScrollContainer();
 
   if (scrollEl && scrollEl.scrollHeight > scrollEl.clientHeight) {
-    const scrollStep  = Math.max(scrollEl.clientHeight * 0.75, 100); // 75% del alto visible
-    const maxScroll   = scrollEl.scrollHeight - scrollEl.clientHeight;
-    const delayMs     = 120; // ms de espera para que el DOM virtualizado actualice
+    const scrollStep = Math.max(scrollEl.clientHeight * 0.75, 100); // 75% del alto visible
+    const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+    const delayMs = 120; // ms de espera para que el DOM virtualizado actualice
 
     let currentScroll = 0;
     while (currentScroll < maxScroll) {
       currentScroll = Math.min(currentScroll + scrollStep, maxScroll);
       scrollEl.scrollTop = currentScroll;
-      await new Promise(r => setTimeout(r, delayMs));
+      await new Promise((r) => setTimeout(r, delayMs));
       scrapeVisibleItems();
     }
 
     // Restaurar scroll al inicio para no desorientar al usuario
     scrollEl.scrollTop = 0;
-    await new Promise(r => setTimeout(r, 80));
+    await new Promise((r) => setTimeout(r, 80));
   }
 
   if (Object.keys(data).length === 0) {
     return {
-      error: "No se detectó la lista de participantes. Abrí el panel 'Participantes' en Zoom."
+      error:
+        "No se detectó la lista de participantes. Abrí el panel 'Participantes' en Zoom.",
     };
   }
 
@@ -280,11 +305,17 @@ function leerArchivo(file) {
 
 /** Parsea un CSV y devuelve array de nombres (sin header) */
 function parsearCSV(text) {
-  const lineas = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const lineas = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
   if (lineas.length === 0) return [];
   // Detectar si la primera línea es header (ej. "Nombre")
   const primeraLinea = lineas[0].toLowerCase().replace(/"/g, "");
-  const tieneHeader = primeraLinea === "nombre" || primeraLinea === "name" || primeraLinea === "alumno";
+  const tieneHeader =
+    primeraLinea === "nombre" ||
+    primeraLinea === "name" ||
+    primeraLinea === "alumno";
   return tieneHeader ? lineas.slice(1) : lineas;
 }
 
@@ -297,10 +328,13 @@ function parsearCSV(text) {
 function normalizar(nombre) {
   if (!nombre) return "";
   return nombre
-    .normalize("NFD")                          // descomponer caracteres
-    .replace(/[\u0300-\u036f]/g, "")           // quitar diacríticos
+    .normalize("NFD") // descomponer caracteres
+    .replace(/[\u0300-\u036f]/g, "") // quitar diacríticos
     .toLowerCase()
-    .replace(/\s*\((yo|anfitri[oó]n|coanfitri[oó]n|host|co-host|me|guest|invitado)[^)]*\)/gi, "")
+    .replace(
+      /\s*\((yo|anfitri[oó]n|coanfitri[oó]n|host|co-host|me|guest|invitado)[^)]*\)/gi,
+      "",
+    )
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -312,7 +346,7 @@ function normalizar(nombre) {
 function tokenizar(nombreNorm) {
   return nombreNorm
     .split(/\s+/)
-    .filter(t => t.length > 0 && !/^\d+$/.test(t)); // descarta tokens solo numéricos
+    .filter((t) => t.length > 0 && !/^\d+$/.test(t)); // descarta tokens solo numéricos
 }
 
 /**
@@ -331,16 +365,17 @@ function coinciden(claveAlumno, claveZoom) {
   if (claveAlumno === claveZoom) return true;
 
   const tokensAlumno = tokenizar(claveAlumno);
-  const tokensZoom   = tokenizar(claveZoom);
+  const tokensZoom = tokenizar(claveZoom);
 
   if (tokensAlumno.length === 0 || tokensZoom.length === 0) return false;
 
   // El conjunto más pequeño debe estar contenido en el más grande
-  const [menores, mayores] = tokensAlumno.length <= tokensZoom.length
-    ? [tokensAlumno, tokensZoom]
-    : [tokensZoom, tokensAlumno];
+  const [menores, mayores] =
+    tokensAlumno.length <= tokensZoom.length
+      ? [tokensAlumno, tokensZoom]
+      : [tokensZoom, tokensAlumno];
 
-  return menores.every(t => mayores.includes(t));
+  return menores.every((t) => mayores.includes(t));
 }
 
 /** Compara la lista de alumnos contra los datos de Zoom y genera el reporte */
@@ -352,7 +387,8 @@ function procesarAsistencia(alumnos, zoomData) {
   }));
 
   const filas = [["Nombre", "Asistencia", "Cámara"]];
-  let presentes = 0, ausentes = 0;
+  let presentes = 0,
+    ausentes = 0;
 
   for (const alumno of alumnos) {
     const nombre = alumno.replace(/^"|"$/g, "").trim(); // quitar comillas si las hay
@@ -361,29 +397,34 @@ function procesarAsistencia(alumnos, zoomData) {
     const claveAlumno = normalizar(nombre);
 
     // Buscar coincidencia exacta primero, luego subset de tokens
-    const match = zoomEntries.find(({ claveNorm }) => coinciden(claveAlumno, claveNorm));
+    const match = zoomEntries.find(({ claveNorm }) =>
+      coinciden(claveAlumno, claveNorm),
+    );
 
     if (match) {
       presentes++;
-      filas.push([nombre, "Presente", match.info.camera_on ? "Encendida" : "Apagada"]);
+      filas.push([
+        nombre,
+        "Presente",
+        match.info.camera_on ? "Encendida" : "Apagada",
+      ]);
     } else {
       ausentes++;
       filas.push([nombre, "Ausente", "Apagada"]);
     }
   }
 
-  return { filas, resumen: { presentes, ausentes, total: presentes + ausentes } };
+  return {
+    filas,
+    resumen: { presentes, ausentes, total: presentes + ausentes },
+  };
 }
 
 /** Convierte un array de filas en un string CSV válido */
 function generarCSV(filas) {
   return filas
-    .map(fila => fila.map(celda => `"${celda.replace(/"/g, '""')}"`).join(","))
+    .map((fila) =>
+      fila.map((celda) => `"${celda.replace(/"/g, '""')}"`).join(","),
+    )
     .join("\r\n");
 }
-=======
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("Interfaz de la extensión cargada correctamente.");
-  document.getElementById("status").innerText = "Lista para usarse.";
-});
->>>>>>> 17d02f2 (feat: setup basic browser extension structure and UI)
