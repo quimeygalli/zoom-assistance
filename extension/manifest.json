@@ -17,11 +17,6 @@
     },
     "default_title": "Zoom Attendance Tracker"
   },
-  "permissions": [
-    "activeTab",
-    "scripting"
-  ],
-  "host_permissions": [
-    "https://*.zoom.us/*"
-  ]
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["https://*.zoom.us/*"]
 }

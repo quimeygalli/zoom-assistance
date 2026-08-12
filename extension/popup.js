@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // ============================================================
 // Zoom Attendance Tracker — popup.js
 // Toda la lógica corre en el browser. Sin servidor externo.
@@ -380,3 +381,9 @@ function generarCSV(filas) {
     .map(fila => fila.map(celda => `"${celda.replace(/"/g, '""')}"`).join(","))
     .join("\r\n");
 }
+=======
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("Interfaz de la extensión cargada correctamente.");
+  document.getElementById("status").innerText = "Lista para usarse.";
+});
+>>>>>>> 17d02f2 (feat: setup basic browser extension structure and UI)
