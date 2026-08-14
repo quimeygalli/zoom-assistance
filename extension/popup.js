@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const injectionResults = await chrome.scripting.executeScript({
         target: { tabId: tab.id, allFrames: true },
-        func: scrapeZoomDataFull,
+        func: scrapeZoomData,
       });
 
       // Buscar el frame que devolvió datos reales
@@ -137,153 +137,74 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // ============================================================
 // LÓGICA DE SCRAPING (se inyecta en la pestaña de Zoom)
-// IMPORTANTE: scrapeZoomDataFull debe ser completamente auto-contenida
-// porque chrome.scripting.executeScript con `func` inyecta UNA SOLA función
-// sin acceso al scope externo. Toda la lógica auxiliar va DENTRO de ella.
 // ============================================================
-
-/**
- * Función principal de scraping con scroll automático.
- * Auto-contenida: no depende de ninguna función externa.
- * Recorre toda la lista virtualizada de Zoom haciendo scroll progresivo
- * y recolectando participantes en cada posición.
- */
-async function scrapeZoomDataFull() {
+function scrapeZoomData() {
   const data = {};
 
-  // ── Helper interno: extraer items visibles en el DOM ────────────────────
-  function scrapeVisibleItems() {
-    let items = null;
-
-    // Estrategia 1: contenedor por ID
-    const container = document.getElementById("participants-ul");
-    if (container) {
-      items = container.querySelectorAll(
-        ".participants-li, [id^='participants-list-']",
-      );
-    }
-    // Estrategia 2: todo el documento
-    if (!items || items.length === 0) {
-      items = document.querySelectorAll(
-        ".participants-li, [id^='participants-list-']",
-      );
-    }
-    // Estrategia 3: por aria-label del contenedor de lista
-    if (!items || items.length === 0) {
-      const listContainer = document.querySelector(
-        '[aria-label="Participants list"], [aria-label="Lista de participantes"]',
-      );
-      if (listContainer) {
-        items = listContainer.querySelectorAll(
-          ".participants-li, [id^='participants-list-'], [role='application']",
-        );
-      }
-    }
-
-    if (!items || items.length === 0) return false;
-
-    items.forEach((el) => {
-      // Nombre desde span de display
-      const nameEl = el.querySelector(".participants-item__display-name");
-      let name = nameEl ? nameEl.innerText.trim() : "";
-
-      // Fallback: desde aria-label
-      const aria = el.getAttribute("aria-label") || "";
-      if (!name && aria) {
-        name = aria
-          .split(",")[0]
-          .replace(/\s*\([^)]*\)/g, "")
-          .trim();
-      }
-
-      if (!name) return;
-
-      // Estado de cámara
-      const ariaLower = aria.toLowerCase();
-      const videoOffSvg = el.querySelector('svg[class*="video-off"]');
-      const videoOnSvg = el.querySelector('svg[class*="video-on"]');
-      const videoOffAria =
-        ariaLower.includes("video off") || ariaLower.includes("video apagado");
-      const videoOnAria =
-        ariaLower.includes("video on") || ariaLower.includes("video encendido");
-
-      let camera_on = true;
-      if (videoOffSvg || videoOffAria) camera_on = false;
-      else if (videoOnSvg || videoOnAria) camera_on = true;
-
-      // Solo registra la primera aparición (no sobreescribe)
-      if (!(name in data)) {
-        data[name] = { camera_on };
-      }
-    });
-
-    return true;
-  }
-
-  // ── Helper interno: encontrar contenedor scrolleable ────────────────────
-  function findScrollContainer() {
-    const candidates = [
-      document.getElementById("participants-ul"),
-      document.querySelector('[aria-label="Participants list"]'),
-      document.querySelector('[aria-label="Lista de participantes"]'),
-      document.querySelector(".participants-ul"),
-      document.querySelector(".participants-list"),
-      document.querySelector(".participant-list__container"),
-    ];
-    for (const el of candidates) {
-      if (el && el.scrollHeight > el.clientHeight) return el;
-    }
-    // Búsqueda genérica: ancestro scrolleable del primer item
-    const firstItem = document.querySelector(
+  // Estrategia 1: buscar dentro del contenedor principal
+  let items = null;
+  const container = document.getElementById("participants-ul");
+  if (container) {
+    items = container.querySelectorAll(
       ".participants-li, [id^='participants-list-']",
     );
-    if (firstItem) {
-      let parent = firstItem.parentElement;
-      while (parent && parent !== document.body) {
-        if (parent.scrollHeight > parent.clientHeight + 5) return parent;
-        parent = parent.parentElement;
-      }
+  }
+  // Estrategia 2: buscar en todo el documento
+  if (!items || items.length === 0) {
+    items = document.querySelectorAll(
+      ".participants-li, [id^='participants-list-']",
+    );
+  }
+  // Estrategia 3: buscar por aria-label de la lista
+  if (!items || items.length === 0) {
+    const listContainer = document.querySelector(
+      '[aria-label="Participants list"], [aria-label="Lista de participantes"]',
+    );
+    if (listContainer) {
+      items = listContainer.querySelectorAll(
+        ".participants-li, [id^='participants-list-'], [role='application']",
+      );
     }
-    return null;
   }
 
-  // ── Lectura inicial (posición de scroll = 0) ────────────────────────────
-  const foundInitial = scrapeVisibleItems();
-
-  if (!foundInitial) {
+  if (!items || items.length === 0) {
     return {
       error:
         "No se detectó la lista de participantes. Abrí el panel 'Participantes' en Zoom.",
     };
   }
 
-  // ── Scroll automático para recorrer toda la lista virtualizada ──────────
-  const scrollEl = findScrollContainer();
+  items.forEach((el) => {
+    // Nombre desde el span de display
+    const nameEl = el.querySelector(".participants-item__display-name");
+    let name = nameEl ? nameEl.innerText.trim() : "";
 
-  if (scrollEl && scrollEl.scrollHeight > scrollEl.clientHeight) {
-    const scrollStep = Math.max(scrollEl.clientHeight * 0.75, 100); // 75% del alto visible
-    const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
-    const delayMs = 120; // ms de espera para que el DOM virtualizado actualice
-
-    let currentScroll = 0;
-    while (currentScroll < maxScroll) {
-      currentScroll = Math.min(currentScroll + scrollStep, maxScroll);
-      scrollEl.scrollTop = currentScroll;
-      await new Promise((r) => setTimeout(r, delayMs));
-      scrapeVisibleItems();
+    // Fallback: desde aria-label
+    const aria = el.getAttribute("aria-label") || "";
+    if (!name && aria) {
+      name = aria
+        .split(",")[0]
+        .replace(/\s*\([^)]*\)/g, "")
+        .trim();
     }
 
-    // Restaurar scroll al inicio para no desorientar al usuario
-    scrollEl.scrollTop = 0;
-    await new Promise((r) => setTimeout(r, 80));
-  }
+    if (!name) return;
 
-  if (Object.keys(data).length === 0) {
-    return {
-      error:
-        "No se detectó la lista de participantes. Abrí el panel 'Participantes' en Zoom.",
-    };
-  }
+    // Estado de la cámara
+    const ariaLower = aria.toLowerCase();
+    const videoOffSvg = el.querySelector('svg[class*="video-off"]');
+    const videoOnSvg = el.querySelector('svg[class*="video-on"]');
+    const videoOffAria =
+      ariaLower.includes("video off") || ariaLower.includes("video apagado");
+    const videoOnAria =
+      ariaLower.includes("video on") || ariaLower.includes("video encendido");
+
+    let camera_on = true;
+    if (videoOffSvg || videoOffAria) camera_on = false;
+    else if (videoOnSvg || videoOnAria) camera_on = true;
+
+    data[name] = { camera_on };
+  });
 
   return data;
 }
@@ -339,52 +260,13 @@ function normalizar(nombre) {
     .trim();
 }
 
-/**
- * Devuelve los tokens de un nombre normalizado (solo letras y números,
- * descartando tokens que sean puramente numéricos — ej. IDs de Zoom).
- */
-function tokenizar(nombreNorm) {
-  return nombreNorm
-    .split(/\s+/)
-    .filter((t) => t.length > 0 && !/^\d+$/.test(t)); // descarta tokens solo numéricos
-}
-
-/**
- * Matching flexible entre el nombre del alumno y un nombre de Zoom.
- *
- * Reglas:
- * 1. Match exacto (normalizado) → presente.
- * 2. Subset de tokens: si todos los tokens del nombre más corto están
- *    contenidos en los tokens del nombre más largo → presente.
- *    Cubre casos como:
- *      - Lista: "Juan Gimenez"      ↔ Zoom: "Juan Pablo Gimenez"
- *      - Lista: "Juan Pablo Gimenez" ↔ Zoom: "Juan Gimenez"
- *      - Lista: "Juan Gimenez"      ↔ Zoom: "Juan Gimenez 4821"
- */
-function coinciden(claveAlumno, claveZoom) {
-  if (claveAlumno === claveZoom) return true;
-
-  const tokensAlumno = tokenizar(claveAlumno);
-  const tokensZoom = tokenizar(claveZoom);
-
-  if (tokensAlumno.length === 0 || tokensZoom.length === 0) return false;
-
-  // El conjunto más pequeño debe estar contenido en el más grande
-  const [menores, mayores] =
-    tokensAlumno.length <= tokensZoom.length
-      ? [tokensAlumno, tokensZoom]
-      : [tokensZoom, tokensAlumno];
-
-  return menores.every((t) => mayores.includes(t));
-}
-
 /** Compara la lista de alumnos contra los datos de Zoom y genera el reporte */
 function procesarAsistencia(alumnos, zoomData) {
   // Normalizar las claves de zoomData una sola vez
-  const zoomEntries = Object.entries(zoomData).map(([nombre, info]) => ({
-    claveNorm: normalizar(nombre),
-    info,
-  }));
+  const zoomNorm = {};
+  for (const [nombre, info] of Object.entries(zoomData)) {
+    zoomNorm[normalizar(nombre)] = info;
+  }
 
   const filas = [["Nombre", "Asistencia", "Cámara"]];
   let presentes = 0,
@@ -394,19 +276,15 @@ function procesarAsistencia(alumnos, zoomData) {
     const nombre = alumno.replace(/^"|"$/g, "").trim(); // quitar comillas si las hay
     if (!nombre) continue;
 
-    const claveAlumno = normalizar(nombre);
+    const clave = normalizar(nombre);
+    const info = zoomNorm[clave];
 
-    // Buscar coincidencia exacta primero, luego subset de tokens
-    const match = zoomEntries.find(({ claveNorm }) =>
-      coinciden(claveAlumno, claveNorm),
-    );
-
-    if (match) {
+    if (info) {
       presentes++;
       filas.push([
         nombre,
         "Presente",
-        match.info.camera_on ? "Encendida" : "Apagada",
+        info.camera_on ? "Encendida" : "Apagada",
       ]);
     } else {
       ausentes++;

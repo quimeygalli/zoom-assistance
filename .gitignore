@@ -1,6 +1,39 @@
 # Listas de alumnos (datos privados, no subir al repo)
 lista_alumnos.csv
 *.csv
+# Entorno virtual de Python
+.venv/
+venv/
+env/
+
+# Caches de Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Archivos temporales del servidor
+temp_in_*
+temp_out_*
+
+# Reportes generados (outputs del programa)
+reporte_asistencia.csv
+asistencia_procesada.csv
+
+# Carpeta de distribución (generada por empaquetar.bat)
+distribucion/
+
+# ZIP de distribución
+ZoomAttendanceTracker.zip
 
 # Sistemas operativos
 .DS_Store
@@ -11,6 +44,9 @@ desktop.ini
 .vscode/
 .idea/
 *.code-workspace
+<<<<<<< HEAD
 
 # ZIP de distribución (generado al empaquetar)
 ZoomAttendanceTracker.zip
+=======
+>>>>>>> cec1fea (feat: rewrite extension as standalone (no server) + add HTML parser and tray server)
