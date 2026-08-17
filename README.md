@@ -2,7 +2,7 @@
 
 ### Toma de asistencia automática para Zoom
 
-Una extensión de Google Chrome para tomar asistencia automáticamente en reuniones de Zoom web. Compara a los participantes conectados con tu lista de alumnos en formato CSV, y genera un reporte descargable con el estado de asistencia y uso de cámara.
+Una extensión de Google Chrome para tomar asistencia automáticamente en reuniones de Zoom web. Compara a los participantes conectados con tu lista de alumnos en formato CSV, y genera un reporte d[...]
 
 ---
 
@@ -19,6 +19,8 @@ Una extensión de Google Chrome para tomar asistencia automáticamente en reunio
 
 ## Instalación (Solo la primera vez — 2 minutos)
 
+## Instalación (Solo la primera vez — 2 minutos)
+
 1. **Abre Google Chrome** e ingresa a la siguiente dirección:
    ```text
    chrome://extensions/
@@ -28,12 +30,14 @@ Una extensión de Google Chrome para tomar asistencia automáticamente en reunio
 4. **Selecciona la carpeta correcta**: En la ventana emergente, navega hasta los archivos del proyecto y selecciona la carpeta llamada `extension`.
    > [!IMPORTANT]
    > Selecciona la carpeta **`extension`**, NO la carpeta contenedora principal.
-5. **Fija la extensión**: Haz clic en el ícono de extensiones (pieza de rompecabezas en la esquina superior derecha de Chrome), busca **Zoom Attendance Tracker** y haz clic en el ícono de pin (fijar) para tenerlo siempre a mano.
+5. **Fija la extensión**: Haz clic en el ícono de rompecabezas (arriba a la derecha en Chrome), busca **Zoom Attendance Tracker** y haz clic en el ícono de pin para tenerlo siempre a mano[...]
 
 > [!TIP]
-> **Aviso normal de Chrome:** Al abrir el navegador, es posible que aparezca un aviso indicando que _"Las extensiones en modo de desarrollador están habilitadas"_. Esto es normal; simplemente haz clic en **"Mantener"** o ciérralo. No afecta en nada al funcionamiento.
+> **Aviso normal de Chrome:** Al abrir el navegador, es posible que aparezca un aviso indicando que _"Las extensiones en modo de desarrollador están habilitadas"_. Esto es normal; simplemente haz cli[...]
 
 ---
+
+## Uso en cada clase (30 segundos)
 
 ## Uso en cada clase (30 segundos)
 
@@ -59,7 +63,7 @@ Necesitas un archivo CSV con la lista de tus alumnos. Puedes editar el archivo d
 4. En el menú de la extensión:
    - Haz clic en **"Elegir archivo"** y selecciona tu archivo CSV con la lista de alumnos.
    - Haz clic en **"Escanear y procesar asistencia"**.
-5. En unos segundos verás una tabla con los resultados (Presente o Ausente) junto con el estado de su cámara.
+5. En unos segundos verás una tabla con los resultados (Presente / Ausente) junto con el estado de su cámara.
 6. Haz clic en **"Descargar reporte CSV"** para guardar el archivo con la asistencia del día.
 
 ---
@@ -90,8 +94,10 @@ Si eres desarrollador y deseas correr la API local en FastAPI o compilar la apli
 
 ## Solución de Problemas
 
+## Solución de Problemas
+
 - **Problema: "No se detectó la lista de participantes"**
-  - _Solución:_ Asegúrate de estar en la reunión de Zoom dentro de Chrome (no en la aplicación de escritorio) y de tener el panel "Participantes" abierto. Si acabas de instalar la extensión, recarga la pestaña de Zoom e inténtalo de nuevo.
+  - _Solución:_ Asegúrate de estar en la reunión de Zoom dentro de Chrome (no en la aplicación de escritorio) y de tener el panel "Participantes" abierto. Si acabas de instalar la extensión, [...]
 - **Problema: Todos los alumnos figuran como "Ausente"**
   - _Solución:_ Verifica que el panel de Participantes esté abierto. Compara si los nombres en Zoom coinciden visualmente con los nombres que escribiste en el archivo CSV.
 - **Problema: No puedo abrir el CSV con Excel / aparece todo en una sola línea**
