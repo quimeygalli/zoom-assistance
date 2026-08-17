@@ -45,8 +45,16 @@ desktop.ini
 .idea/
 *.code-workspace
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 # ZIP de distribución (generado al empaquetar)
 ZoomAttendanceTracker.zip
 =======
 >>>>>>> cec1fea (feat: rewrite extension as standalone (no server) + add HTML parser and tray server)
+=======
+
+# Archivos de ejemplo
+
+formato-ejemplo.html
+lista_alumnos.csv
+>>>>>>> 331b947 (Add requirements.txt, instructions, and build icon)
