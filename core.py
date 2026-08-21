@@ -1,3 +1,15 @@
+"""
+core.py — Shared attendance-processing logic.
+
+This module is intentionally free of FastAPI/web-framework imports so it can
+be used both by the HTTP API (main.py) and directly from the CLI or tests.
+
+Public API
+----------
+    normalizar_nombre(nombre)           -> str
+    extraer_participantes_zoom(html)    -> dict
+    procesar_asistencia(in, out, src)   -> list[list[str]]
+"""
 import csv
 import json
 import os
@@ -128,11 +140,33 @@ def extraer_participantes_zoom(html_content: str) -> dict:
 
 def procesar_asistencia(input_csv: str, output_csv: str, zoom_source) -> list:
     """
-    Lee un CSV con una lista de alumnos, compara con los datos de Zoom
-    (HTML crudo, ruta de archivo HTML, string JSON o diccionario)
-    y genera un nuevo CSV con las columnas: [Nombre, Asistencia, Cámara].
-    
-    Retorna la lista de filas procesadas.
+    Compara la lista de alumnos del CSV con los participantes de Zoom y
+    genera un reporte CSV con el estado de asistencia y cámara.
+
+    Parameters
+    ----------
+    input_csv : str
+        Ruta al archivo CSV de alumnos.  Se detecta automáticamente el encoding
+        (utf-8-sig, utf-8, latin-1, cp1252).
+    output_csv : str
+        Ruta donde se escribirá el CSV de salida (siempre en utf-8-sig / BOM,
+        para compatibilidad con Excel).
+    zoom_source : str | dict
+        Puede ser cualquiera de:
+        - dict  → {nombre: {"camera_on": bool, ...}}
+        - str   → ruta a un archivo HTML/JSON en disco
+        - str   → HTML crudo (contiene "<" y palabras clave de Zoom)
+        - str   → JSON crudo parseable con json.loads()
+
+    Returns
+    -------
+    list[list[str]]
+        Lista de filas incluyendo el encabezado::
+
+            [["Nombre", "Asistencia", "Cámara"],
+             ["María López", "Presente", "Encendida"],
+             ["Carlos Diaz", "Ausente", "Apagada"],
+             ...]
     """
     # 1. Resolver y normalizar zoom_data
     zoom_dict_normalizado = {}

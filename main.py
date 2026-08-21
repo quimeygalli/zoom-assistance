@@ -1,3 +1,17 @@
+"""
+main.py — FastAPI application and CLI entry point.
+
+Usage
+-----
+  # Start the HTTP API server (default port 8000):
+  python main.py --server [--port 8000]
+
+  # Run the attendance processor via command line:
+  python main.py --csv lista_alumnos.csv --html formato-ejemplo.html --out reporte.csv
+
+The FastAPI app object (`app`) is also imported by server.py for the Windows
+executable distribution. Do not rename it.
+"""
 import argparse
 import json
 import os
@@ -99,6 +113,19 @@ async def procesar_asistencia_endpoint(
 def ejecutar_cli(csv_path: str, html_path: str, output_path: str):
     """
     Ejecuta el procesamiento de asistencia por línea de comandos e imprime un reporte.
+
+    Parameters
+    ----------
+    csv_path : str
+        Ruta al archivo CSV con la lista de alumnos.
+    html_path : str
+        Ruta al archivo HTML exportado del panel de Participantes de Zoom.
+    output_path : str
+        Ruta donde se escribirá el CSV de resultado.
+
+    Side effects
+    ------------
+    Escribe el CSV de salida en ``output_path`` y muestra el reporte en stdout.
     """
     print("=" * 60)
     print("PROCESADOR DE ASISTENCIA ZOOM")
