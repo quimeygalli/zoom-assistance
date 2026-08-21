@@ -247,9 +247,34 @@ document.addEventListener("DOMContentLoaded", () => {
         const estado = encontrado ? "Sí" : "No";
         if (encontrado) presentes++; else ausentes++;
 
-        ws[XLSX.utils.encode_cell({ r: R, c: colDestino })] = { t: "s", v: estado };
+        const styleGreen = {
+          fill: { fgColor: { rgb: "C6EFCE" } }, // Fondo verde claro
+          font: { color: { rgb: "006100" }, bold: true }, // Texto verde oscuro
+          alignment: { horizontal: "center" }
+        };
+
+        const styleRed = {
+          fill: { fgColor: { rgb: "FFC7CE" } }, // Fondo rojo claro
+          font: { color: { rgb: "9C0006" }, bold: true }, // Texto rojo oscuro
+          alignment: { horizontal: "center" }
+        };
+
+        ws[XLSX.utils.encode_cell({ r: R, c: colDestino })] = {
+          t: "s",
+          v: estado,
+          s: encontrado ? styleGreen : styleRed
+        };
       }
 
+      // Encabezado de la columna de asistencia
+      const cellHeaderRef = XLSX.utils.encode_cell({ r: headerRow, c: colDestino });
+      if (!ws[cellHeaderRef] || !ws[cellHeaderRef].v) {
+        ws[cellHeaderRef] = {
+          t: "s",
+          v: "Asistencia",
+          s: { font: { bold: true }, alignment: { horizontal: "center" } }
+        };
+      }
 
       ws["!ref"] = XLSX.utils.encode_range(range);
 
