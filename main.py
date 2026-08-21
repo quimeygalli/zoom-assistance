@@ -24,7 +24,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from core import extraer_participantes_zoom, procesar_asistencia
+from core import extraer_participantes_zoom, procesar_asistencia, marcar_asistencia_excel
 
 app = FastAPI(
     title="Zoom Attendance API",
@@ -110,6 +110,75 @@ async def procesar_asistencia_endpoint(
                 pass
 
 
+@app.post("/api/marcar-asistencia-excel/")
+async def marcar_asistencia_excel_endpoint(
+    file: UploadFile = File(..., description="Archivo Excel (.xlsx) con la lista de alumnos"),
+    zoom_data: Optional[str] = Form(None, description="Datos de Zoom en formato HTML o JSON string"),
+    zoom_file: Optional[UploadFile] = File(None, description="Archivo HTML o JSON de Zoom"),
+    col_offset: int = Form(1, description="Columnas a la derecha del nombre donde se escribe la asistencia")
+):
+    """
+    Recibe un archivo Excel con la lista de alumnos y la fuente de datos de Zoom.
+    Escribe \"Sí\" o \"No\" en la columna inmediatamente a la derecha de cada nombre.
+    Devuelve el archivo Excel modificado.
+    Si un alumno de Zoom no está en el Excel, se ignora.
+    """
+    if not zoom_data and not zoom_file:
+        raise HTTPException(
+            status_code=400,
+            detail="Debes proporcionar 'zoom_data' (HTML/JSON en texto) o 'zoom_file' (archivo HTML/JSON)."
+        )
+
+    # Guardar el xlsx recibido con un nombre temporal
+    input_xlsx = f"temp_in_{file.filename}"
+    output_xlsx = f"temp_out_{file.filename}"
+    temp_zoom_path = None
+
+    try:
+        # 1. Guardar el Excel temporalmente
+        with open(input_xlsx, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # Copiar a archivo de salida (se modifica in-place en marcar_asistencia_excel)
+        shutil.copy2(input_xlsx, output_xlsx)
+
+        # 2. Obtener la fuente de datos de Zoom
+        fuente_zoom = ""
+        if zoom_data:
+            fuente_zoom = zoom_data
+        elif zoom_file:
+            temp_zoom_path = f"temp_zoom_{zoom_file.filename}"
+            with open(temp_zoom_path, "wb") as buffer:
+                shutil.copyfileobj(zoom_file.file, buffer)
+            with open(temp_zoom_path, "r", encoding="utf-8", errors="ignore") as f:
+                fuente_zoom = f.read()
+
+        # 3. Marcar asistencia en el Excel
+        marcar_asistencia_excel(output_xlsx, fuente_zoom, col_offset=col_offset)
+
+        # 4. Devolver el archivo Excel modificado
+        return FileResponse(
+            path=output_xlsx,
+            filename=f"asistencia_{file.filename}",
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al procesar Excel: {str(e)}")
+
+    finally:
+        if os.path.exists(input_xlsx):
+            try:
+                os.remove(input_xlsx)
+            except OSError:
+                pass
+        if temp_zoom_path and os.path.exists(temp_zoom_path):
+            try:
+                os.remove(temp_zoom_path)
+            except OSError:
+                pass
+
+
 def ejecutar_cli(csv_path: str, html_path: str, output_path: str):
     """
     Ejecuta el procesamiento de asistencia por línea de comandos e imprime un reporte.
@@ -173,11 +242,46 @@ if __name__ == "__main__":
     parser.add_argument("--html", default="formato-ejemplo.html", help="Ruta al archivo HTML de Zoom")
     parser.add_argument("--out", default="reporte_asistencia.csv", help="Ruta para el archivo CSV de salida")
     parser.add_argument("--port", type=int, default=8000, help="Puerto para el servidor FastAPI")
+    parser.add_argument("--xlsx", default=None, help="Ruta al archivo Excel (.xlsx) para marcar asistencia directamente")
+    parser.add_argument("--xlsx-out", default=None, help="Ruta de salida del Excel modificado (por defecto sobreescribe el original)")
 
     args = parser.parse_args()
 
     if args.server:
         print(f"Iniciando servidor FastAPI en http://127.0.0.1:{args.port}...")
         uvicorn.run(app, host="127.0.0.1", port=args.port)
+    elif args.xlsx:
+        # Modo Excel: marcar asistencia directamente en el xlsx
+        xlsx_path = args.xlsx
+        xlsx_out = args.xlsx_out or xlsx_path
+
+        if not os.path.exists(xlsx_path):
+            print(f"[!] Error: No se encontró el archivo Excel '{xlsx_path}'.")
+            sys.exit(1)
+        if not os.path.exists(args.html):
+            print(f"[!] Error: No se encontró el archivo HTML de Zoom '{args.html}'.")
+            sys.exit(1)
+
+        # Si la salida es distinta al original, copiar primero
+        if xlsx_out != xlsx_path:
+            shutil.copy2(xlsx_path, xlsx_out)
+
+        with open(args.html, "r", encoding="utf-8", errors="ignore") as f:
+            html_content = f.read()
+
+        print("=" * 60)
+        print("MARCADO DE ASISTENCIA EN EXCEL")
+        print("=" * 60)
+        resumen = marcar_asistencia_excel(xlsx_out, html_content)
+        print(f"Archivo Excel   : {xlsx_out}")
+        print(f"Presentes       : {resumen['presentes']}")
+        print(f"Ausentes        : {resumen['ausentes']}")
+        print(f"Total procesados: {resumen['total']}")
+        print("-" * 60)
+        for nombre, estado in resumen["filas"]:
+            icono = "✓" if estado == "Sí" else "✗"
+            print(f"  {icono} {nombre:<30} {estado}")
+        print("=" * 60)
+        print(f"Excel guardado en: {xlsx_out}")
     else:
         ejecutar_cli(args.csv, args.html, args.out)

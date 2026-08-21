@@ -16,6 +16,7 @@ import os
 import re
 import unicodedata
 from bs4 import BeautifulSoup
+import openpyxl
 
 
 def normalizar_nombre(nombre: str) -> str:
@@ -261,3 +262,123 @@ def procesar_asistencia(input_csv: str, output_csv: str, zoom_source) -> list:
         writer.writerows(resultados)
         
     return resultados
+
+
+def marcar_asistencia_excel(xlsx_path: str, zoom_source, col_offset: int = 1) -> dict:
+    """
+    Lee un archivo Excel (.xlsx) con una lista de alumnos y escribe el estado de
+    asistencia en la columna inmediatamente a la derecha del nombre de cada alumno.
+
+    Reglas:
+    - Si el alumno aparece en Zoom → escribe "Sí" en la celda de la derecha.
+    - Si el alumno no aparece en Zoom → escribe "No" en la celda de la derecha.
+    - Si un nombre de Zoom no está en el Excel → no se hace nada (puede estar en
+      otra planilla).
+
+    Parameters
+    ----------
+    xlsx_path : str
+        Ruta al archivo Excel (.xlsx) con la lista de alumnos.
+        El archivo se modifica in-place y también se guarda en ``xlsx_path``.
+    zoom_source : str | dict
+        Mismas opciones que ``procesar_asistencia``: dict normalizado, HTML crudo,
+        JSON crudo, o ruta a un archivo HTML/JSON.
+    col_offset : int, optional
+        Cuántas columnas a la derecha del nombre se escribe la asistencia.
+        Por defecto 1 (la columna inmediatamente a la derecha).
+
+    Returns
+    -------
+    dict
+        Resumen con claves ``presentes``, ``ausentes``, ``total`` y ``filas``
+        (lista de tuplas (nombre, estado) procesadas).
+    """
+    # 1. Resolver zoom_source en el mismo formato que procesar_asistencia
+    zoom_dict_normalizado = {}
+
+    if isinstance(zoom_source, dict):
+        for k, v in zoom_source.items():
+            norm_k = normalizar_nombre(k)
+            if isinstance(v, dict):
+                zoom_dict_normalizado[norm_k] = v
+            else:
+                zoom_dict_normalizado[norm_k] = {"camera_on": bool(v)}
+
+    elif isinstance(zoom_source, str):
+        fuente = zoom_source.strip()
+        if os.path.isfile(fuente):
+            with open(fuente, 'r', encoding='utf-8', errors='ignore') as f:
+                contenido = f.read()
+            if "<" in contenido and ("participants" in contenido or "html" in contenido or "div" in contenido):
+                zoom_dict_normalizado = extraer_participantes_zoom(contenido)
+            else:
+                try:
+                    data = json.loads(contenido)
+                    zoom_dict_normalizado = {
+                        normalizar_nombre(k): v if isinstance(v, dict) else {"camera_on": bool(v)}
+                        for k, v in data.items()
+                    }
+                except json.JSONDecodeError:
+                    zoom_dict_normalizado = extraer_participantes_zoom(contenido)
+        elif "<" in fuente and ("participants" in fuente or "div" in fuente or "svg" in fuente):
+            zoom_dict_normalizado = extraer_participantes_zoom(fuente)
+        else:
+            try:
+                data = json.loads(fuente)
+                if isinstance(data, dict):
+                    zoom_dict_normalizado = {
+                        normalizar_nombre(k): v if isinstance(v, dict) else {"camera_on": bool(v)}
+                        for k, v in data.items()
+                    }
+            except json.JSONDecodeError:
+                zoom_dict_normalizado = extraer_participantes_zoom(fuente)
+
+    # 2. Abrir el libro Excel
+    wb = openpyxl.load_workbook(xlsx_path)
+    ws = wb.active
+
+    presentes = 0
+    ausentes = 0
+    filas_procesadas = []
+
+    # 3. Iterar sobre todas las filas buscando celdas no vacías en la primera columna
+    for row in ws.iter_rows():
+        # Buscar la primera celda no vacía de la fila como candidata a nombre de alumno
+        primera_celda = row[0] if row else None
+        if primera_celda is None:
+            continue
+
+        valor = primera_celda.value
+        if valor is None:
+            continue
+
+        nombre_str = str(valor).strip()
+        if not nombre_str:
+            continue
+
+        clave_busqueda = normalizar_nombre(nombre_str)
+        info_zoom = zoom_dict_normalizado.get(clave_busqueda)
+
+        if info_zoom is not None:
+            # Alumno presente en Zoom
+            estado = "Sí"
+            presentes += 1
+        else:
+            # Alumno en la lista pero ausente en Zoom → marcar No
+            estado = "No"
+            ausentes += 1
+
+        # Escribir en la columna a la derecha del nombre
+        col_destino = primera_celda.column + col_offset
+        ws.cell(row=primera_celda.row, column=col_destino, value=estado)
+        filas_procesadas.append((nombre_str, estado))
+
+    # 4. Guardar el libro modificado
+    wb.save(xlsx_path)
+
+    return {
+        "presentes": presentes,
+        "ausentes": ausentes,
+        "total": presentes + ausentes,
+        "filas": filas_procesadas,
+    }

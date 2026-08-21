@@ -44,7 +44,24 @@
         gap: 8px;
         margin-bottom: 12px;
       }
-      #csvFileInput { display: none; }
+      #csvFileInput, #xlsxFileInput { display: none; }
+
+      /* File button row */
+      .file-label {
+        display: block;
+        font-size: 11px;
+        color: #94a3b8;
+        margin-bottom: 6px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .file-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
       .file-btn {
         padding: 7px 12px;
         background: #1e293b;
@@ -55,9 +72,10 @@
         font-size: 12px;
         white-space: nowrap;
         transition: all 0.15s;
+        flex-shrink: 0;
       }
-      .file-btn:hover { background: #273548; border-color: #4f6b8a; }
-      #fileName {
+      .file-btn:hover { background: #273548; border-color: #4f6b8a; color: #e2e8f0; }
+      .file-name {
         color: #64748b;
         font-size: 11px;
         overflow: hidden;
@@ -65,7 +83,7 @@
         white-space: nowrap;
         flex: 1;
       }
-      #fileName.selected { color: #38bdf8; }
+      .file-name.selected { color: #34d399; }
 
       /* Main button */
       #processBtn {
@@ -159,6 +177,44 @@
         transition: all 0.15s;
       }
       #downloadBtn:hover { background: #064e1d; }
+
+      /* Divider */
+      .divider {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 14px 0 10px;
+        color: #334155;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .divider::before, .divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: #1e293b;
+      }
+
+      /* Excel section */
+      #excelSection { margin-top: 0; }
+
+      /* Excel mark button */
+      #markExcelBtn {
+        display: none;
+        width: 100%;
+        margin-top: 8px;
+        padding: 8px;
+        background: linear-gradient(135deg, #064e3b, #065f46);
+        color: #6ee7b7;
+        border: 1px solid #047857;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.15s;
+      }
+      #markExcelBtn:hover { background: linear-gradient(135deg, #065f46, #047857); }
     </style>
   </head>
   <body>
@@ -170,11 +226,10 @@
       </div>
     </div>
 
-    <label class="file-label" for="csvFileInput">Lista de alumnos (CSV)</label>
+    <label class="file-label">Planilla de asistencia (.xlsx)</label>
     <div class="file-row">
-      <label class="file-btn" for="csvFileInput">📂 Elegir archivo</label>
-      <input type="file" id="csvFileInput" accept=".csv,.txt" />
-      <span id="fileName">Ningún archivo seleccionado</span>
+      <button class="file-btn" id="pickFileBtn">📊 Elegir Excel</button>
+      <span class="file-name" id="xlsxFileName">Ningún archivo seleccionado</span>
     </div>
 
     <button id="processBtn">⚡ Escanear y procesar asistencia</button>
@@ -199,37 +254,12 @@
 
     <button id="downloadBtn">⬇ Descargar reporte CSV</button>
 
-    <script>
-      // Mostrar nombre del archivo seleccionado
-      document.getElementById("csvFileInput").addEventListener("change", function () {
-        const label = document.getElementById("fileName");
-        if (this.files.length > 0) {
-          label.textContent = this.files[0].name;
-          label.className = "selected";
-        } else {
-          label.textContent = "Ningún archivo seleccionado";
-          label.className = "";
-        }
-        // Ocultar resultados anteriores al cambiar archivo
-        document.getElementById("resultSection").style.display = "none";
-        document.getElementById("downloadBtn").style.display = "none";
-        document.getElementById("status").style.display = "none";
-        document.getElementById("summary").textContent = "";
-      });
+    <div id="excelSection">
+      <button id="markExcelBtn">📝 Marcar asistencia en Excel</button>
+    </div>
 
-      // Mostrar/ocultar el status con helper
-      const _origSetStatus = window.setStatus;
-      document.addEventListener("DOMContentLoaded", () => {
-        const statusDiv = document.getElementById("status");
-        // Hacer el status visible cuando se llama
-        const origSetStatus = window.setStatus;
-        window.setStatus = (type, msg) => {
-          statusDiv.style.display = "flex";
-          statusDiv.textContent = msg;
-          statusDiv.className = "status " + type;
-        };
-      });
-    </script>
+    <script src="xlsx.mini.min.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>
+
